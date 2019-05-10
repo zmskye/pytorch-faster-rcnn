@@ -59,8 +59,8 @@ class Network(nn.Module):
     def _add_gt_image_summary(self):
         # use a customized visualization function to visualize the boxes
         self._add_gt_image()
-        image = draw_bounding_boxes(\
-                          self._gt_image, self._image_gt_summaries['gt_boxes'], self._image_gt_summaries['im_info'])
+        image = draw_bounding_boxes( \
+            self._gt_image, self._image_gt_summaries['gt_boxes'], self._image_gt_summaries['im_info'])
 
         return tb.summary.image('GROUND_TRUTH',
                                 image[0].astype('float32') / 255.0)
@@ -82,15 +82,15 @@ class Network(nn.Module):
             'TRAIN/' + key, var.data.cpu().numpy(), bins='auto')
 
     def _proposal_top_layer(self, rpn_cls_prob, rpn_bbox_pred):
-        rois, rpn_scores = proposal_top_layer(\
-                                        rpn_cls_prob, rpn_bbox_pred, self._im_info,
-                                         self._feat_stride, self._anchors, self._num_anchors)
+        rois, rpn_scores = proposal_top_layer( \
+            rpn_cls_prob, rpn_bbox_pred, self._im_info,
+            self._feat_stride, self._anchors, self._num_anchors)
         return rois, rpn_scores
 
     def _proposal_layer(self, rpn_cls_prob, rpn_bbox_pred):
-        rois, rpn_scores = proposal_layer(\
-                                        rpn_cls_prob, rpn_bbox_pred, self._im_info, self._mode,
-                                         self._feat_stride, self._anchors, self._num_anchors)
+        rois, rpn_scores = proposal_layer( \
+            rpn_cls_prob, rpn_bbox_pred, self._im_info, self._mode,
+            self._feat_stride, self._anchors, self._num_anchors)
 
         return rois, rpn_scores
 
@@ -104,21 +104,22 @@ class Network(nn.Module):
 
     def _anchor_target_layer(self, rpn_cls_score):
         rpn_labels, rpn_bbox_targets, rpn_bbox_inside_weights, rpn_bbox_outside_weights = \
-          anchor_target_layer(
-          rpn_cls_score.data, self._gt_boxes.data.cpu().numpy(), self._im_info, self._feat_stride, self._anchors.data.cpu().numpy(), self._num_anchors)
+            anchor_target_layer(
+                rpn_cls_score.data, self._gt_boxes.data.cpu().numpy(), self._im_info, self._feat_stride,
+                self._anchors.data.cpu().numpy(), self._num_anchors)
 
         rpn_labels = torch.from_numpy(rpn_labels).float().to(
-            self._device)  #.set_shape([1, 1, None, None])
+            self._device)  # .set_shape([1, 1, None, None])
         rpn_bbox_targets = torch.from_numpy(rpn_bbox_targets).float().to(
-            self._device)  #.set_shape([1, None, None, self._num_anchors * 4])
+            self._device)  # .set_shape([1, None, None, self._num_anchors * 4])
         rpn_bbox_inside_weights = torch.from_numpy(
             rpn_bbox_inside_weights).float().to(
-                self.
-                _device)  #.set_shape([1, None, None, self._num_anchors * 4])
+            self.
+                _device)  # .set_shape([1, None, None, self._num_anchors * 4])
         rpn_bbox_outside_weights = torch.from_numpy(
             rpn_bbox_outside_weights).float().to(
-                self.
-                _device)  #.set_shape([1, None, None, self._num_anchors * 4])
+            self.
+                _device)  # .set_shape([1, None, None, self._num_anchors * 4])
 
         rpn_labels = rpn_labels.long()
         self._anchor_targets['rpn_labels'] = rpn_labels
@@ -135,8 +136,8 @@ class Network(nn.Module):
 
     def _proposal_target_layer(self, rois, roi_scores):
         rois, roi_scores, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights = \
-          proposal_target_layer(
-          rois, roi_scores, self._gt_boxes, self._num_classes)
+            proposal_target_layer(
+                rois, roi_scores, self._gt_boxes, self._num_classes)
 
         self._proposal_targets['rois'] = rois
         self._proposal_targets['labels'] = labels.long()
@@ -151,11 +152,11 @@ class Network(nn.Module):
 
     def _anchor_component(self, height, width):
         # just to get the shape right
-        #height = int(math.ceil(self._im_info.data[0, 0] / self._feat_stride[0]))
-        #width = int(math.ceil(self._im_info.data[0, 1] / self._feat_stride[0]))
-        anchors, anchor_length = generate_anchors_pre(\
-                                              height, width,
-                                               self._feat_stride, self._anchor_scales, self._anchor_ratios)
+        # height = int(math.ceil(self._im_info.data[0, 0] / self._feat_stride[0]))
+        # width = int(math.ceil(self._im_info.data[0, 1] / self._feat_stride[0]))
+        anchors, anchor_length = generate_anchors_pre( \
+            height, width,
+            self._feat_stride, self._anchor_scales, self._anchor_ratios)
         self._anchors = torch.from_numpy(anchors).to(self._device)
         self._anchor_length = anchor_length
 
@@ -166,7 +167,7 @@ class Network(nn.Module):
                         bbox_outside_weights,
                         sigma=1.0,
                         dim=[1]):
-        sigma_2 = sigma**2
+        sigma_2 = sigma ** 2
         box_diff = bbox_pred - bbox_targets
         in_box_diff = bbox_inside_weights * box_diff
         abs_in_box_diff = torch.abs(in_box_diff)
@@ -391,7 +392,7 @@ class Network(nn.Module):
         for k in self._predictions.keys():
             self._score_summaries[k] = self._predictions[k]
 
-        return rois, cls_prob, bbox_pred
+        return rois, cls_prob, bbox_pred, fc7
 
     def forward(self, image, im_info, gt_boxes=None, mode='TRAIN'):
         self._image_gt_summaries['image'] = image
@@ -406,7 +407,7 @@ class Network(nn.Module):
 
         self._mode = mode
 
-        rois, cls_prob, bbox_pred = self._predict()
+        rois, cls_prob, bbox_pred, pool5 = self._predict()
 
         if mode == 'TEST':
             stds = bbox_pred.data.new(cfg.TRAIN.BBOX_NORMALIZE_STDS).repeat(
@@ -414,6 +415,7 @@ class Network(nn.Module):
             means = bbox_pred.data.new(cfg.TRAIN.BBOX_NORMALIZE_MEANS).repeat(
                 self._num_classes).unsqueeze(0).expand_as(bbox_pred)
             self._predictions["bbox_pred"] = bbox_pred.mul(stds).add(means)
+            self._predictions['pool5'] = pool5   # by zm
         else:
             self._add_losses()  # compute losses
 
@@ -449,16 +451,18 @@ class Network(nn.Module):
         with torch.no_grad():
             self.forward(image, im_info, None, mode='TEST')
         cls_score, cls_prob, bbox_pred, rois = self._predictions["cls_score"].data.cpu().numpy(), \
-                                                         self._predictions['cls_prob'].data.cpu().numpy(), \
-                                                         self._predictions['bbox_pred'].data.cpu().numpy(), \
-                                                         self._predictions['rois'].data.cpu().numpy()
-        return cls_score, cls_prob, bbox_pred, rois
+                                               self._predictions['cls_prob'].data.cpu().numpy(), \
+                                               self._predictions['bbox_pred'].data.cpu().numpy(), \
+                                               self._predictions['rois'].data.cpu().numpy()
+        pool5 = self._predictions['pool5'].data.cpu().numpy()
+
+        return cls_score, cls_prob, bbox_pred, rois, pool5
 
     def delete_intermediate_states(self):
         # Delete intermediate result to save memory
         for d in [
-                self._losses, self._predictions, self._anchor_targets,
-                self._proposal_targets
+            self._losses, self._predictions, self._anchor_targets,
+            self._proposal_targets
         ]:
             for k in list(d):
                 del d[k]
@@ -474,14 +478,14 @@ class Network(nn.Module):
     def train_step(self, blobs, train_op):
         self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'])
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
-                                                                            self._losses['rpn_loss_box'].item(), \
-                                                                            self._losses['cross_entropy'].item(), \
-                                                                            self._losses['loss_box'].item(), \
-                                                                            self._losses['total_loss'].item()
-        #utils.timer.timer.tic('backward')
+                                                               self._losses['rpn_loss_box'].item(), \
+                                                               self._losses['cross_entropy'].item(), \
+                                                               self._losses['loss_box'].item(), \
+                                                               self._losses['total_loss'].item()
+        # utils.timer.timer.tic('backward')
         train_op.zero_grad()
         self._losses['total_loss'].backward()
-        #utils.timer.timer.toc('backward')
+        # utils.timer.timer.toc('backward')
         train_op.step()
 
         self.delete_intermediate_states()
@@ -491,10 +495,10 @@ class Network(nn.Module):
     def train_step_with_summary(self, blobs, train_op):
         self.forward(blobs['data'], blobs['im_info'], blobs['gt_boxes'])
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, loss = self._losses["rpn_cross_entropy"].item(), \
-                                                                            self._losses['rpn_loss_box'].item(), \
-                                                                            self._losses['cross_entropy'].item(), \
-                                                                            self._losses['loss_box'].item(), \
-                                                                            self._losses['total_loss'].item()
+                                                               self._losses['rpn_loss_box'].item(), \
+                                                               self._losses['cross_entropy'].item(), \
+                                                               self._losses['loss_box'].item(), \
+                                                               self._losses['total_loss'].item()
         train_op.zero_grad()
         self._losses['total_loss'].backward()
         train_op.step()

@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import cv2
 import numpy as np
+
 try:
     import cPickle as pickle
 except ImportError:
@@ -103,7 +104,7 @@ def im_detect(net, im):
     blobs['im_info'] = np.array(
         [im_blob.shape[1], im_blob.shape[2], im_scales[0]], dtype=np.float32)
 
-    _, scores, bbox_pred, rois = net.test_image(blobs['data'],
+    _, scores, bbox_pred, rois, pool5 = net.test_image(blobs['data'],
                                                 blobs['im_info'])
 
     boxes = rois[:, 1:5] / im_scales[0]
@@ -119,7 +120,7 @@ def im_detect(net, im):
         # Simply repeat the boxes, once for each class
         pred_boxes = np.tile(boxes, (1, scores.shape[1]))
 
-    return scores, pred_boxes
+    return scores, pred_boxes, pool5
 
 
 def test_net(net, imdb, weights_filename, max_per_image=100, thresh=0.):
@@ -151,7 +152,7 @@ def test_net(net, imdb, weights_filename, max_per_image=100, thresh=0.):
             cls_scores = scores[inds, j]
             cls_boxes = boxes[inds, j * 4:(j + 1) * 4]
             cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-              .astype(np.float32, copy=False)
+                .astype(np.float32, copy=False)
             keep = nms(
                 torch.from_numpy(cls_boxes), torch.from_numpy(cls_scores),
                 cfg.TEST.NMS).numpy() if cls_dets.size > 0 else []
@@ -170,8 +171,8 @@ def test_net(net, imdb, weights_filename, max_per_image=100, thresh=0.):
         _t['misc'].toc()
 
         print('im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
-            .format(i + 1, num_images, _t['im_detect'].average_time(),
-                _t['misc'].average_time()))
+              .format(i + 1, num_images, _t['im_detect'].average_time(),
+                      _t['misc'].average_time()))
 
     det_file = os.path.join(output_dir, 'detections.pkl')
     with open(det_file, 'wb') as f:

@@ -37,12 +37,12 @@ CLASSES = ('__background__', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
            'tvmonitor')
 
 NETS = {
-    'vgg16': ('vgg16_faster_rcnn_iter_%d.pth', ),
-    'res101': ('res101_faster_rcnn_iter_%d.pth', )
+    'vgg16': ('vgg16_faster_rcnn_iter_%d.pth',),
+    'res101': ('res101_faster_rcnn_iter_%d.pth',)
 }
 DATASETS = {
-    'pascal_voc': ('voc_2007_trainval', ),
-    'pascal_voc_0712': ('voc_2007_trainval+voc_2012_trainval', )
+    'pascal_voc': ('voc_2007_trainval',),
+    'pascal_voc_0712': ('voc_2007_trainval+voc_2012_trainval',)
 }
 
 
@@ -177,5 +177,7 @@ if __name__ == '__main__':
         print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
         print('Demo for data/demo/{}'.format(im_name))
         demo(net, im_name)
+
+
 
     plt.show()
